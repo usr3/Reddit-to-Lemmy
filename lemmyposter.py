@@ -28,7 +28,10 @@ def login(server, username, pw):
 
 def getCommunityID(authToken, server, communityName):
         try:
-            request = requests.get(f"{server}/api/v3/community?auth={authToken}&name={communityName}")
+            headers = {
+                "Authorization": f"Bearer {authToken}"
+            }
+            request = requests.get(f"{server}/api/v3/community?name={communityName}", headers=headers)
             communityId = request.json()["community_view"]["community"]["id"]
             return communityId   
             
@@ -43,7 +46,6 @@ def getCommunityID(authToken, server, communityName):
 
 def setPost(authToken, server, community, postName, postURL = None, postBody = None, nsfw = False):
     postContent = {
-        "auth": authToken,
         "community_id": getCommunityID(authToken, server, community),
         "name": postName,
         "language_id" : 37, # I think that's English going by the json received from other posts
@@ -55,14 +57,18 @@ def setPost(authToken, server, community, postName, postURL = None, postBody = N
          
     if postBody:
          postContent["body"] = postBody
+    
+    headers = {
+        "Authorization": f"Bearer {authToken}"
+    }
          
     try:
-        request = requests.post(f"{server}/api/v3/post", json = postContent)
+        request = requests.post(f"{server}/api/v3/post", json = postContent, headers = headers)
         return request.json()["post_view"]["post"]["id"]  
         
     except Exception as e:
         print(f"Error encountered while posting: '{postContent}': {e}")
-        return False     
+        return False
       
 
 ## Create a comment for a given Post
@@ -70,20 +76,22 @@ def setPost(authToken, server, community, postName, postURL = None, postBody = N
 
 def setComment(authToken, server, content, postId, parentID = None):
     commentContent = {
-        "auth" : authToken,
         "content" : content,
         "post_id" : postId
     }
-    
+
     if parentID:
          commentContent["parent_id"] = parentID
          
-    request = requests.post(f"{server}/api/v3/comment", json = commentContent)
+    headers = {
+        "Authorization": f"Bearer {authToken}"
+    }
+    request = requests.post(f"{server}/api/v3/comment", json = commentContent, headers = headers)
     
     if not request.ok:
         print(f"Error encountered while commenting: {content}\r\n\r\nResponse: {request.text}")
         
-    return request.json()["comment_view"]["comment"]["id"]    
+    return request.json()["comment_view"]["comment"]["id"]
 
 
 ## Distinguish a comment 
@@ -91,18 +99,20 @@ def setComment(authToken, server, content, postId, parentID = None):
 
 def distinguishComment(authToken, server, commentID):
 
-    distinguishPayload = {
-        "auth" : authToken,
+    distinguishPayload = {        
         "comment_id" : commentID,
         "distinguished" : True
     }
 
-    request = requests.post(f"{server}/api/v3/comment/distinguish", json = distinguishPayload)
+    headers = {
+        "Authorization": f"Bearer {authToken}"
+    }
+    request = requests.post(f"{server}/api/v3/comment/distinguish", json = distinguishPayload, headers=headers)
     
     if not request.ok:
         print(f"Error encountered while distinguishing comment: {request.text}")
         
-    return request.json()["comment_view"]["comment"]["distinguished"]    
+    return request.json()["comment_view"]["comment"]["distinguished"]
 
 
 ## Get posts from a Community by Community Name (NOT display name)
@@ -110,10 +120,13 @@ def distinguishComment(authToken, server, commentID):
 ## Reference: https://join-lemmy.org/api/classes/LemmyHttp.html#getPosts
 
 def getPosts(authToken, server, communityName):
+    headers = {
+        "Authorization": f"Bearer {authToken}"
+    }
     try:
         posts = []
         page = 1       
-        while ((request := requests.get(f"{server}/api/v3/post/list?auth={authToken}&community_name={communityName}&page={page}")) and len(request.json()["posts"]) > 0):
+        while ((request := requests.get(f"{server}/api/v3/post/list?community_name={communityName}&page={page}", headers=headers)) and len(request.json()["posts"]) > 0):
             for postDetails in request.json()["posts"]:            
                 posts.append(postDetails)                
             page += 1
@@ -128,21 +141,27 @@ def getPosts(authToken, server, communityName):
 ## Returns list of comments
 ## Reference: https://join-lemmy.org/api/classes/LemmyHttp.html#getComments
 def getComments(authToken, server, postID):
+        headers = {
+            "Authorization": f"Bearer {authToken}"
+        }
         try:
-            request = requests.get(f"{server}/api/v3/comment/list?auth={authToken}&post_id={postID}")
+            request = requests.get(f"{server}/api/v3/comment/list?post_id={postID}", headers=headers)
             posts = request.json()
             return posts   
             
         except Exception as e:
             print(f"Error when fetching comments from '{communityName}' on '{server}': {e}")
             exit()
-            
+                        
 ## Get the "credit" comment for a specific post (if there is one)
 ## Returns a single comment
 ## Reference: https://join-lemmy.org/api/classes/LemmyHttp.html#getComments
 def getCreditComment(authToken, server, postID):
+        headers = {
+            "Authorization": f"Bearer {authToken}"
+        }
         try:
-            request = requests.get(f"{server}/api/v3/comment/list?auth={authToken}&post_id={postID}&sort=Old")
+            request = requests.get(f"{server}/api/v3/comment/list?post_id={postID}&sort=Old", headers=headers)
             posts = request.json()
             
             #Our credit comments are distinguished so we can use this to check
@@ -154,3 +173,4 @@ def getCreditComment(authToken, server, postID):
         except Exception as e:
             print(f"Error when fetching credit comment from '{communityName}' on '{server}': {e}")
             exit()
+            
